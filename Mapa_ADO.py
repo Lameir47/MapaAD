@@ -18,6 +18,8 @@ st.title("🗺️ Mapa Interativo de Cidades por ADO")
 st.markdown("Passe o mouse sobre uma cidade para ver os detalhes. As fronteiras são exibidas no mapa.")
 
 # --- Constantes e URLs ---
+# REVERSÃO: Voltamos a usar o arquivo GeoJSON com todos os municípios do Brasil.
+# Isto garante que a aplicação funciona localmente e online com todos os dados.
 GEOJSON_URL = "https://raw.githubusercontent.com/tbrugz/geodata-br/master/geojson/geojs-100-mun.json"
 
 # --- Funções de Carregamento de Dados (com Cache) ---
@@ -27,8 +29,10 @@ def load_geojson(url):
     """Carrega os dados das fronteiras e simplifica as geometrias para melhor performance."""
     try:
         gdf = gpd.read_file(url)
+        # REVERSÃO: O arquivo original usa 'id' para o código IBGE, então renomeamos para 'code_muni'.
         gdf = gdf.rename(columns={'id': 'code_muni'})
         gdf['code_muni'] = pd.to_numeric(gdf['code_muni'], errors='coerce')
+        # A simplificação da geometria é mantida, pois é crucial para a performance.
         gdf['geometry'] = gdf['geometry'].simplify(tolerance=0.005)
         return gdf
     except Exception as e:
