@@ -1,6 +1,5 @@
 streamlit
 pandas
 gspread
-google-auth-oauthlib
-folium
-streamlit-folium
+google-auth
+pydeck
