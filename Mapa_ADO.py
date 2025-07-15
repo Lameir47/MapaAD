@@ -11,6 +11,10 @@ st.set_page_config(
     layout="wide"
 )
 
+# --- Configuração do Mapbox (Token obrigatorio no Streamlit Cloud Secrets) ---
+# Adicione no Secrets: mapbox_token = "SEU_MAPBOX_TOKEN"
+pdk.settings.mapbox_api_key = st.secrets.get("mapbox_token", "")
+
 # --- Título do Aplicativo ---
 st.title("⭐ Mapa de ADO por Cidade")
 st.markdown(
@@ -137,8 +141,9 @@ else:
     )
 
     # Tabela opcional
-    if st.sidebar.checkbox("Mostrar tabela"    ):
+    if st.sidebar.checkbox("Mostrar tabela"):
         st.sidebar.subheader("Dados")
         st.sidebar.dataframe(
             sheet_data[['min buyer_city', 'ADO', 'latitude', 'longitude']]
         )
+
