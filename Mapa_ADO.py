@@ -11,8 +11,8 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- Configuração do Mapbox (Token obrigatorio no Streamlit Cloud Secrets) ---
-# Adicione no Secrets: mapbox_token = "SEU_MAPBOX_TOKEN"
+# --- Configuração do Mapbox (Token obrigatório no Streamlit Cloud Secrets) ---
+# Adicione nos Secrets: mapbox_token = "SEU_MAPBOX_TOKEN"
 pdk.settings.mapbox_api_key = st.secrets.get("mapbox_token", "")
 
 # --- Título do Aplicativo ---
@@ -123,15 +123,16 @@ else:
 
     tooltip = {
         "html": (
-            "<b>Cidade:</b> {min buyer_city}<br/>"
+            "<b>Cidade:</b> {min buyer_city}<br/>"  
             "<b>ADO:</b> {ADO}"
         ),
         "style": {"backgroundColor": "steelblue", "color": "white"}
     }
 
-    # Exibe o mapa online
+    # Exibe o mapa online com mapbox_key explícito
     st.pydeck_chart(
         pdk.Deck(
+            mapbox_key=st.secrets.get("mapbox_token", ""),
             map_style='mapbox://styles/mapbox/dark-v10',
             initial_view_state=view,
             layers=[layer],
@@ -146,4 +147,5 @@ else:
         st.sidebar.dataframe(
             sheet_data[['min buyer_city', 'ADO', 'latitude', 'longitude']]
         )
+
 
