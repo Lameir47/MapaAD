@@ -2,127 +2,143 @@ import streamlit as st
 import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
-import folium
-from streamlit_folium import st_folium
-import geopandas as gpd
+import pydeck as pdk
 
 # --- Configuração da Página ---
 st.set_page_config(
     page_title="Mapa de Cidades (ADO)",
-    page_icon="🗺️",
+    page_icon="⭐",
     layout="wide"
 )
 
 # --- Título do Aplicativo ---
-st.title("🗺️ Mapa Interativo de Cidades por ADO")
-st.markdown("Passe o mouse sobre uma cidade para ver os detalhes. As fronteiras são exibidas no mapa.")
+st.title("⭐ Mapa de ADO por Cidade")
+st.markdown(
+    "Passe o mouse sobre um ponto para ver os detalhes ou use o filtro na barra lateral para focar em uma cidade específica."
+)
 
-# --- Constantes e URLs ---
-# REVERSÃO: Voltamos a usar o arquivo GeoJSON com todos os municípios do Brasil.
-# Isto garante que a aplicação funciona localmente e online com todos os dados.
-GEOJSON_URL = "https://raw.githubusercontent.com/tbrugz/geodata-br/master/geojson/geojs-100-mun.json"
+# --- Legenda de Cores ---
+st.markdown(
+    """
+### Legenda das Cores
+- <span style='color:#ff6464;'>**0 a 20** → Vermelho claro</span>  
+- <span style='color:#ffa564;'>**21 a 50** → Laranja claro</span>  
+- <span style='color:#b4b4b4;'>**51 a 100** → Cinza claro</span>  
+- <span style='color:#78c878;'>**Acima de 100** → Verde claro</span>
+""",
+    unsafe_allow_html=True
+)
 
-# --- Funções de Carregamento de Dados (com Cache) ---
-
-@st.cache_data(ttl=3600) # Cache por 1 hora
-def load_geojson(url):
-    """Carrega os dados das fronteiras e simplifica as geometrias para melhor performance."""
-    try:
-        gdf = gpd.read_file(url)
-        # REVERSÃO: O arquivo original usa 'id' para o código IBGE, então renomeamos para 'code_muni'.
-        gdf = gdf.rename(columns={'id': 'code_muni'})
-        gdf['code_muni'] = pd.to_numeric(gdf['code_muni'], errors='coerce')
-        # A simplificação da geometria é mantida, pois é crucial para a performance.
-        gdf['geometry'] = gdf['geometry'].simplify(tolerance=0.005)
-        return gdf
-    except Exception as e:
-        st.error(f"Não foi possível carregar os dados de fronteiras (GeoJSON): {e}")
-        return None
-
-@st.cache_data(ttl=600) # Cache por 10 minutos
+# --- Carregamento de Dados com Google Sheets ---
+@st.cache_data(ttl=600)
 def load_data_from_private_sheet():
-    """Autentica e carrega os dados da planilha privada do Google Sheets."""
+    """Autentica e carrega os dados do Google Sheets. Fica em cache por 10 minutos."""
     try:
-        scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-        creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scopes)
+        scopes = [
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
+        ]
+        creds = Credentials.from_service_account_info(
+            st.secrets["gcp_service_account"], scopes=scopes
+        )
         client = gspread.authorize(creds)
-        spreadsheet = client.open_by_key(st.secrets["google_sheet"]["sheet_id"])
-        worksheet = spreadsheet.worksheet(st.secrets["google_sheet"]["sheet_name"])
+        sheet_conf = st.secrets["google_sheet"]
+        spreadsheet = client.open_by_key(sheet_conf["sheet_id"])
+        worksheet = spreadsheet.worksheet(sheet_conf["sheet_name"])
         data = pd.DataFrame(worksheet.get_all_records())
-        data['ADO'] = pd.to_numeric(data['ADO'], errors='coerce')
-        data['min CITY_ID_IBGE'] = pd.to_numeric(data['min CITY_ID_IBGE'], errors='coerce')
-        data.dropna(subset=['min CITY_ID_IBGE', 'ADO'], inplace=True)
-        data['min CITY_ID_IBGE'] = data['min CITY_ID_IBGE'].astype(int)
+        # Converte colunas numéricas
+        for col in ["latitude", "longitude", "ADO"]:
+            data[col] = pd.to_numeric(
+                data[col].astype(str).str.replace(",", "."),
+                errors='coerce'
+            )
+        # Remove linhas sem dados essenciais
+        data.dropna(
+            subset=['latitude', 'longitude', 'ADO', 'min buyer_city'],
+            inplace=True
+        )
         return data
     except Exception as e:
-        st.error("Ocorreu um erro ao acessar a planilha.")
-        st.exception(e)
+        st.error(f"Erro ao acessar a planilha: {e}")
         return pd.DataFrame()
 
-# --- Função de Geração do Mapa (sem cache para manter a interatividade) ---
-def create_map(data):
-    """Cria e retorna o objeto do mapa Folium."""
-    map_center = [-14.2350, -51.9253]
-    m = folium.Map(location=map_center, zoom_start=4, tiles="cartodbpositron")
-
-    geojson_layer = folium.GeoJson(
-        data,
-        style_function=lambda feature: {
-            'fillColor': '#3186cc',
-            'color': 'transparent',
-            'weight': 0,
-            'fillOpacity': 0.0,
-        },
-        highlight_function=lambda x: {
-            'fillColor': '#3186cc',
-            'color': 'yellow',
-            'weight': 3,
-            'fillOpacity': 0.6,
-        },
-        tooltip=folium.GeoJsonTooltip(
-            fields=['buyer_city', 'ADO'],
-            aliases=['Cidade:', 'ADO:'],
-            localize=True,
-            sticky=False,
-            style="""
-                background-color: #F0EFEF;
-                color: #333333;
-                border: 1px solid black;
-                border-radius: 3px;
-                box-shadow: 3px;
-            """
-        )
-    )
-    geojson_layer.add_to(m)
-    return m
-
-# --- Lógica Principal do Aplicativo ---
-
-geojson_data = load_geojson(GEOJSON_URL)
+# --- Lógica Principal ---
 sheet_data = load_data_from_private_sheet()
 
-if geojson_data is not None and not sheet_data.empty:
-    merged_data = geojson_data.merge(
-        sheet_data,
-        left_on='code_muni',
-        right_on='min CITY_ID_IBGE',
-        how='inner'
+if sheet_data.empty:
+    st.warning("Nenhum dado carregado. Verifique os segredos e a planilha.")
+else:
+    st.success(f"{len(sheet_data)} cidades carregadas com sucesso!")
+
+    # Filtro na barra lateral
+    st.sidebar.header("Filtros do Mapa")
+    cities = sorted(sheet_data['min buyer_city'].unique())
+    cities.insert(0, "Ver todas as cidades")
+    selected_city = st.sidebar.selectbox(
+        "Selecione uma cidade:", cities
     )
 
-    if not merged_data.empty:
-        st.success(f"{len(merged_data)} cidades da sua planilha foram encontradas com sucesso nos dados de fronteiras!")
-
-        # Chama a função que cria o mapa
-        folium_map = create_map(merged_data)
-
-        # Exibe o mapa no Streamlit
-        st_folium(folium_map, use_container_width=True, height=700)
-
-        if st.checkbox("Mostrar dados da tabela (após junção com fronteiras)"):
-            st.subheader("Dados Combinados")
-            st.dataframe(merged_data[['buyer_city', 'min buyer_state', 'ADO', 'code_muni']])
-
+    # Define dados e visualização
+    if selected_city != "Ver todas as cidades":
+        df = sheet_data[sheet_data['min buyer_city'] == selected_city].copy()
+        center_lat = df.iloc[0]['latitude']
+        center_lon = df.iloc[0]['longitude']
+        zoom = 10
     else:
-        st.warning("Nenhuma cidade correspondente encontrada entre a planilha e os dados de fronteiras. Verifique se os códigos IBGE ('min CITY_ID_IBGE') estão corretos.")
-else:
-    st.warning("Não foi possível carregar os dados necessários para exibir o mapa.")
+        df = sheet_data.copy()
+        center_lat, center_lon, zoom = -14.2350, -51.9253, 4
+
+    # Define cores por faixa de ADO
+    def get_color(a):
+        if a <= 20:
+            return [255, 100, 100, 180]
+        if a <= 50:
+            return [255, 165, 100, 180]
+        if a <= 100:
+            return [180, 180, 180, 180]
+        return [120, 200, 120, 180]
+
+    df['color'] = df['ADO'].apply(get_color)
+
+    # Monta camada PyDeck
+    layer = pdk.Layer(
+        "ScatterplotLayer",
+        data=df,
+        pickable=True,
+        get_position="[longitude, latitude]",
+        get_fill_color="color",
+        get_radius=8000
+    )
+
+    view = pdk.ViewState(
+        latitude=center_lat,
+        longitude=center_lon,
+        zoom=zoom,
+        pitch=0
+    )
+
+    tooltip = {
+        "html": (
+            "<b>Cidade:</b> {min buyer_city}<br/>"
+            "<b>ADO:</b> {ADO}"
+        ),
+        "style": {"backgroundColor": "steelblue", "color": "white"}
+    }
+
+    # Exibe o mapa online
+    st.pydeck_chart(
+        pdk.Deck(
+            map_style='mapbox://styles/mapbox/dark-v10',
+            initial_view_state=view,
+            layers=[layer],
+            tooltip=tooltip
+        ),
+        height=700
+    )
+
+    # Tabela opcional
+    if st.sidebar.checkbox("Mostrar tabela"    ):
+        st.sidebar.subheader("Dados")
+        st.sidebar.dataframe(
+            sheet_data[['min buyer_city', 'ADO', 'latitude', 'longitude']]
+        )
