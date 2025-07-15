@@ -129,23 +129,16 @@ else:
         "style": {"backgroundColor": "steelblue", "color": "white"}
     }
 
-    # Exibe o mapa online com mapbox_key explícito
-    st.pydeck_chart(
-        pdk.Deck(
-            mapbox_key=st.secrets.get("mapbox_token", ""),
-            map_style='mapbox://styles/mapbox/dark-v10',
-            initial_view_state=view,
-            layers=[layer],
-            tooltip=tooltip
-        ),
-        height=700
-    )
-
-    # Tabela opcional
-    if st.sidebar.checkbox("Mostrar tabela"):
-        st.sidebar.subheader("Dados")
-        st.sidebar.dataframe(
-            sheet_data[['min buyer_city', 'ADO', 'latitude', 'longitude']]
-        )
+    # Exibe o mapa online
+st.pydeck_chart(
+    pdk.Deck(
+        # Usa o token definido em pdk.settings.mapbox_api_key
+        map_style='mapbox://styles/mapbox/dark-v10',
+        initial_view_state=view,
+        layers=[layer],
+        tooltip=tooltip
+    ),
+    height=700
+)
 
 
