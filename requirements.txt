@@ -2,4 +2,5 @@ streamlit
 pandas
 gspread
 google-auth
-pydeck
+folium
+streamlit-folium
