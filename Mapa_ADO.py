@@ -129,16 +129,29 @@ else:
         "style": {"backgroundColor": "steelblue", "color": "white"}
     }
 
-    # Exibe o mapa online
+    # --- Opção: Tiles Carto CDN ---
+CUSTOM_TILE = "https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
+
+# TileLayer para pydeck
+tile_layer = pdk.Layer(
+    "TileLayer",
+    data=None,
+    min_zoom=0,
+    max_zoom=19,
+    tile_size=256,
+    get_tile_url=CUSTOM_TILE,
+    attribution="Map tiles by Carto, under CC BY 3.0. Data by OpenStreetMap, under ODbL."
+)
+
 st.pydeck_chart(
     pdk.Deck(
-        # Usa o token definido em pdk.settings.mapbox_api_key
-        map_style='mapbox://styles/mapbox/dark-v10',
+        map_style=None, # Não usa Mapbox
         initial_view_state=view,
-        layers=[layer],
+        layers=[tile_layer, layer],
         tooltip=tooltip
     ),
     height=700
 )
+
 
 
