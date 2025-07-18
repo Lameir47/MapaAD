@@ -81,18 +81,18 @@ else:
         )
 
         m = folium.Map(location=[center_lat, center_lon], zoom_start=zoom, tiles="CartoDB dark_matter")
-        mc = MarkerCluster().add_to(m)
+        # Removido o MarkerCluster, pontos ficam todos individuais
+for _, row in df.iterrows():
+    folium.CircleMarker(
+        location=[row["latitude"], row["longitude"]],
+        radius=5,
+        color=get_color(row["ADO"]),
+        fill=True,
+        fill_color=get_color(row["ADO"]),
+        fill_opacity=0.8,
+        popup=f"<b>Cidade:</b> {row['min buyer_city']}<br/><b>ADO:</b> {row['ADO']}"
+    ).add_to(m)
 
-        for _, row in df.iterrows():
-            folium.CircleMarker(
-                location=[row["latitude"], row["longitude"]],
-                radius=5,
-                color=get_color(row["ADO"]),
-                fill=True,
-                fill_color=get_color(row["ADO"]),
-                fill_opacity=0.8,
-                popup=f"<b>Cidade:</b> {row['min buyer_city']}<br/><b>ADO:</b> {row['ADO']}"
-            ).add_to(mc)
 
         st_folium(m, width=1000, height=700)
 
