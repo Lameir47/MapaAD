@@ -2,12 +2,14 @@ import streamlit as st
 import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
-import plotly.express as px
+import folium
+from folium.plugins import MarkerCluster
+from streamlit_folium import st_folium
 
 st.set_page_config(page_title="Mapa de ADO por Cidade", page_icon="⭐", layout="wide")
 
-st.title("⭐ Mapa de ADO por Cidade (Rápido)")
-st.markdown("Selecione um estado e/ou cidade para visualizar os dados. Não há fundo de mapa, apenas o contorno do Brasil, para máxima velocidade.")
+st.title("⭐ Mapa de ADO por Cidade (Folium + Cluster)")
+st.markdown("Selecione um estado para visualizar os dados do estado no mapa. O carregamento é rápido ao focar em estados específicos.")
 
 @st.cache_data(ttl=600)
 def load_data_from_private_sheet():
@@ -47,61 +49,53 @@ else:
 
     # Filtro por Estado
     estados = sorted(sheet_data['min buyer_state'].unique())
-    estado_selecionado = st.sidebar.selectbox("Selecione o estado:", ["Todos"] + estados)
+    estado_selecionado = st.sidebar.selectbox("Selecione o estado:", estados)
 
-    if estado_selecionado != "Todos":
-        df_estado = sheet_data[sheet_data['min buyer_state'] == estado_selecionado]
+    df = sheet_data[sheet_data['min buyer_state'] == estado_selecionado].copy()
+
+    if df.empty:
+        st.warning("Nenhuma cidade encontrada para esse estado.")
     else:
-        df_estado = sheet_data
+        center_lat = df['latitude'].mean()
+        center_lon = df['longitude'].mean()
+        zoom = 6 if len(df) > 1 else 10
 
-    # Filtro por Cidade (opcional)
-    cidades = sorted(df_estado['min buyer_city'].unique())
-    cidade_selecionada = st.sidebar.selectbox("Selecione a cidade:", ["Todas"] + cidades)
+        def get_color(ado):
+            if ado <= 20:
+                return 'red'
+            elif ado <= 50:
+                return 'orange'
+            elif ado <= 100:
+                return 'lightgray'
+            return 'green'
 
-    if cidade_selecionada != "Todas":
-        df = df_estado[df_estado['min buyer_city'] == cidade_selecionada]
-    else:
-        df = df_estado
+        st.markdown(
+            """
+            ### Legenda das Cores
+            - <span style='color:#ff6464;'>**0 a 20** → Vermelho claro</span>  
+            - <span style='color:#ffa564;'>**21 a 50** → Laranja claro</span>  
+            - <span style='color:#b4b4b4;'>**51 a 100** → Cinza claro</span>  
+            - <span style='color:#78c878;'>**Acima de 100** → Verde claro</span>
+            """,
+            unsafe_allow_html=True
+        )
 
-    # Paleta de cor baseada no ADO
-    def get_cor(ado):
-        if ado <= 20:
-            return "red"
-        elif ado <= 50:
-            return "orange"
-        elif ado <= 100:
-            return "gray"
-        else:
-            return "green"
+        m = folium.Map(location=[center_lat, center_lon], zoom_start=zoom, tiles="CartoDB dark_matter")
+        mc = MarkerCluster().add_to(m)
 
-    df["cor"] = df["ADO"].apply(get_cor)
+        for _, row in df.iterrows():
+            folium.CircleMarker(
+                location=[row["latitude"], row["longitude"]],
+                radius=5,
+                color=get_color(row["ADO"]),
+                fill=True,
+                fill_color=get_color(row["ADO"]),
+                fill_opacity=0.8,
+                popup=f"<b>Cidade:</b> {row['min buyer_city']}<br/><b>ADO:</b> {row['ADO']}"
+            ).add_to(mc)
 
-    fig = px.scatter_geo(
-        df,
-        lat="latitude",
-        lon="longitude",
-        color="cor",
-        hover_name="min buyer_city",
-        hover_data={"ADO": True, "latitude": False, "longitude": False, "cor": False},
-        scope="south america",
-        center={"lat": -14.2, "lon": -51.9},
-        fitbounds="locations",
-        size_max=10,
-    )
-    fig.update_traces(marker=dict(size=7, opacity=0.7, line=dict(width=0)))
-    fig.update_geos(
-        showcountries=True, countrycolor="White",
-        lataxis_range=[-34, 5], lonaxis_range=[-75, -34], # Recorte Brasil
-        showland=True, landcolor="#222"
-    )
-    fig.update_layout(
-        height=700,
-        margin={"r":0,"t":30,"l":0,"b":0},
-        showlegend=False,
-        geo_bgcolor="#222"
-    )
+        st_folium(m, width=1000, height=700)
 
-    st.plotly_chart(fig, use_container_width=True)
-
-    if st.sidebar.checkbox("Mostrar tabela"):
-        st.sidebar.dataframe(df[['min buyer_city', 'ADO', 'min buyer_state', 'latitude', 'longitude']])
+        if st.sidebar.checkbox("Mostrar tabela"):
+            st.sidebar.subheader("Dados")
+            st.sidebar.dataframe(df[['min buyer_city', 'ADO', 'min buyer_state', 'latitude', 'longitude']])
