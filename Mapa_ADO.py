@@ -2,7 +2,8 @@ import streamlit as st
 import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
-import pydeck as pdk
+import folium
+from streamlit_folium import st_folium
 
 # --- Configuração da Página ---
 st.set_page_config(
@@ -10,10 +11,6 @@ st.set_page_config(
     page_icon="⭐",
     layout="wide"
 )
-
-# --- Configuração do Mapbox (Token obrigatório no Streamlit Cloud Secrets) ---
-# Adicione nos Secrets: mapbox_token = "SEU_MAPBOX_TOKEN"
-pdk.settings.mapbox_api_key = st.secrets.get("mapbox_token", "")
 
 # --- Título do Aplicativo ---
 st.title("⭐ Mapa de ADO por Cidade")
@@ -36,7 +33,6 @@ st.markdown(
 # --- Carregamento de Dados com Google Sheets ---
 @st.cache_data(ttl=600)
 def load_data_from_private_sheet():
-    """Autentica e carrega os dados do Google Sheets. Fica em cache por 10 minutos."""
     try:
         scopes = [
             "https://www.googleapis.com/auth/spreadsheets",
@@ -50,13 +46,11 @@ def load_data_from_private_sheet():
         spreadsheet = client.open_by_key(sheet_conf["sheet_id"])
         worksheet = spreadsheet.worksheet(sheet_conf["sheet_name"])
         data = pd.DataFrame(worksheet.get_all_records())
-        # Converte colunas numéricas
         for col in ["latitude", "longitude", "ADO"]:
             data[col] = pd.to_numeric(
                 data[col].astype(str).str.replace(",", "."),
                 errors='coerce'
             )
-        # Remove linhas sem dados essenciais
         data.dropna(
             subset=['latitude', 'longitude', 'ADO', 'min buyer_city'],
             inplace=True
@@ -78,11 +72,9 @@ else:
     st.sidebar.header("Filtros do Mapa")
     cities = sorted(sheet_data['min buyer_city'].unique())
     cities.insert(0, "Ver todas as cidades")
-    selected_city = st.sidebar.selectbox(
-        "Selecione uma cidade:", cities
-    )
+    selected_city = st.sidebar.selectbox("Selecione uma cidade:", cities)
 
-    # Define dados e visualização
+    # Dados filtrados
     if selected_city != "Ver todas as cidades":
         df = sheet_data[sheet_data['min buyer_city'] == selected_city].copy()
         center_lat = df.iloc[0]['latitude']
@@ -92,66 +84,33 @@ else:
         df = sheet_data.copy()
         center_lat, center_lon, zoom = -14.2350, -51.9253, 4
 
-    # Define cores por faixa de ADO
-    def get_color(a):
-        if a <= 20:
-            return [255, 100, 100, 180]
-        if a <= 50:
-            return [255, 165, 100, 180]
-        if a <= 100:
-            return [180, 180, 180, 180]
-        return [120, 200, 120, 180]
+    # Define cores para Folium
+    def get_color(ado):
+        if ado <= 20:
+            return 'red'
+        elif ado <= 50:
+            return 'orange'
+        elif ado <= 100:
+            return 'lightgray'
+        return 'green'
 
-    df['color'] = df['ADO'].apply(get_color)
+    # Cria o mapa base Folium (carto escuro)
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=zoom, tiles="CartoDB dark_matter")
 
-    # Monta camada PyDeck
-    layer = pdk.Layer(
-        "ScatterplotLayer",
-        data=df,
-        pickable=True,
-        get_position="[longitude, latitude]",
-        get_fill_color="color",
-        get_radius=8000
-    )
+    # Adiciona círculos coloridos
+    for _, row in df.iterrows():
+        folium.CircleMarker(
+            location=[row["latitude"], row["longitude"]],
+            radius=5,
+            color=get_color(row["ADO"]),
+            fill=True,
+            fill_color=get_color(row["ADO"]),
+            fill_opacity=0.8,
+            popup=f"<b>Cidade:</b> {row['min buyer_city']}<br/><b>ADO:</b> {row['ADO']}"
+        ).add_to(m)
 
-    view = pdk.ViewState(
-        latitude=center_lat,
-        longitude=center_lon,
-        zoom=zoom,
-        pitch=0
-    )
+    st_folium(m, width=1000, height=700)
 
-    tooltip = {
-        "html": (
-            "<b>Cidade:</b> {min buyer_city}<br/>"  
-            "<b>ADO:</b> {ADO}"
-        ),
-        "style": {"backgroundColor": "steelblue", "color": "white"}
-    }
-
-    # --- Opção: Tiles Carto CDN ---
-CUSTOM_TILE = "https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
-
-# TileLayer para pydeck
-tile_layer = pdk.Layer(
-    "TileLayer",
-    data=None,
-    min_zoom=0,
-    max_zoom=19,
-    tile_size=256,
-    get_tile_url=CUSTOM_TILE,
-    attribution="Map tiles by Carto, under CC BY 3.0. Data by OpenStreetMap, under ODbL."
-)
-
-st.pydeck_chart(
-    pdk.Deck(
-        map_style=None, # Não usa Mapbox
-        initial_view_state=view,
-        layers=[tile_layer, layer],
-        tooltip=tooltip
-    ),
-    height=700
-)
-
-
-
+    if st.sidebar.checkbox("Mostrar tabela"):
+        st.sidebar.subheader("Dados")
+        st.sidebar.dataframe(df[['min buyer_city', 'ADO', 'latitude', 'longitude']])
