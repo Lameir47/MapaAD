@@ -3,6 +3,7 @@ import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
 import folium
+from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
 
 # --- Configuração da Página ---
@@ -33,6 +34,7 @@ st.markdown(
 # --- Carregamento de Dados com Google Sheets ---
 @st.cache_data(ttl=600)
 def load_data_from_private_sheet():
+    """Autentica e carrega os dados do Google Sheets. Fica em cache por 10 minutos."""
     try:
         scopes = [
             "https://www.googleapis.com/auth/spreadsheets",
@@ -46,11 +48,13 @@ def load_data_from_private_sheet():
         spreadsheet = client.open_by_key(sheet_conf["sheet_id"])
         worksheet = spreadsheet.worksheet(sheet_conf["sheet_name"])
         data = pd.DataFrame(worksheet.get_all_records())
+        # Converte colunas numéricas
         for col in ["latitude", "longitude", "ADO"]:
             data[col] = pd.to_numeric(
                 data[col].astype(str).str.replace(",", "."),
                 errors='coerce'
             )
+        # Remove linhas sem dados essenciais
         data.dropna(
             subset=['latitude', 'longitude', 'ADO', 'min buyer_city'],
             inplace=True
@@ -72,9 +76,11 @@ else:
     st.sidebar.header("Filtros do Mapa")
     cities = sorted(sheet_data['min buyer_city'].unique())
     cities.insert(0, "Ver todas as cidades")
-    selected_city = st.sidebar.selectbox("Selecione uma cidade:", cities)
+    selected_city = st.sidebar.selectbox(
+        "Selecione uma cidade:", cities
+    )
 
-    # Dados filtrados
+    # Define dados e visualização
     if selected_city != "Ver todas as cidades":
         df = sheet_data[sheet_data['min buyer_city'] == selected_city].copy()
         center_lat = df.iloc[0]['latitude']
@@ -84,7 +90,6 @@ else:
         df = sheet_data.copy()
         center_lat, center_lon, zoom = -14.2350, -51.9253, 4
 
-    # Define cores para Folium
     def get_color(ado):
         if ado <= 20:
             return 'red'
@@ -94,10 +99,10 @@ else:
             return 'lightgray'
         return 'green'
 
-    # Cria o mapa base Folium (carto escuro)
+    # --- Mapa base Folium + Clusters ---
     m = folium.Map(location=[center_lat, center_lon], zoom_start=zoom, tiles="CartoDB dark_matter")
+    mc = MarkerCluster().add_to(m)
 
-    # Adiciona círculos coloridos
     for _, row in df.iterrows():
         folium.CircleMarker(
             location=[row["latitude"], row["longitude"]],
@@ -107,7 +112,7 @@ else:
             fill_color=get_color(row["ADO"]),
             fill_opacity=0.8,
             popup=f"<b>Cidade:</b> {row['min buyer_city']}<br/><b>ADO:</b> {row['ADO']}"
-        ).add_to(m)
+        ).add_to(mc)
 
     st_folium(m, width=1000, height=700)
 
