@@ -3,13 +3,12 @@ import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
 import folium
-from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
 
 st.set_page_config(page_title="Mapa de ADO por Cidade", page_icon="⭐", layout="wide")
 
-st.title("⭐ Mapa de ADO por Cidade (Folium + Cluster)")
-st.markdown("Selecione um estado para visualizar os dados do estado no mapa. O carregamento é rápido ao focar em estados específicos.")
+st.title("⭐ Mapa de ADO por Cidade (Folium)")
+st.markdown("Selecione um estado para visualizar os dados do estado no mapa. O carregamento é mais rápido ao focar em estados específicos.")
 
 @st.cache_data(ttl=600)
 def load_data_from_private_sheet():
@@ -81,18 +80,18 @@ else:
         )
 
         m = folium.Map(location=[center_lat, center_lon], zoom_start=zoom, tiles="CartoDB dark_matter")
-        # Removido o MarkerCluster, pontos ficam todos individuais
-for _, row in df.iterrows():
-    folium.CircleMarker(
-        location=[row["latitude"], row["longitude"]],
-        radius=5,
-        color=get_color(row["ADO"]),
-        fill=True,
-        fill_color=get_color(row["ADO"]),
-        fill_opacity=0.8,
-        popup=f"<b>Cidade:</b> {row['min buyer_city']}<br/><b>ADO:</b> {row['ADO']}"
-    ).add_to(m)
 
+        # Adiciona todos os pontos individualmente (sem cluster)
+        for _, row in df.iterrows():
+            folium.CircleMarker(
+                location=[row["latitude"], row["longitude"]],
+                radius=5,
+                color=get_color(row["ADO"]),
+                fill=True,
+                fill_color=get_color(row["ADO"]),
+                fill_opacity=0.8,
+                popup=f"<b>Cidade:</b> {row['min buyer_city']}<br/><b>ADO:</b> {row['ADO']}"
+            ).add_to(m)
 
         st_folium(m, width=1000, height=700)
 
