@@ -7,7 +7,7 @@ from streamlit_folium import st_folium
 
 st.set_page_config(page_title="Mapa de ADO por Cidade", page_icon="⭐", layout="wide")
 
-st.title("⭐ Mapa de ADO por Cidade (Folium)")
+st.title("⭐ Mapa de ADO por Cidade")
 st.markdown("Selecione um estado para visualizar os dados do estado no mapa. O carregamento é mais rápido ao focar em estados específicos.")
 
 @st.cache_data(ttl=600)
