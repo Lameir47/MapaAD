@@ -2,39 +2,15 @@ import streamlit as st
 import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
-import folium
-from folium.plugins import MarkerCluster
-from streamlit_folium import st_folium
+import plotly.express as px
 
-# --- Configuração da Página ---
-st.set_page_config(
-    page_title="Mapa de Cidades (ADO)",
-    page_icon="⭐",
-    layout="wide"
-)
+st.set_page_config(page_title="Mapa de ADO por Cidade", page_icon="⭐", layout="wide")
 
-# --- Título do Aplicativo ---
-st.title("⭐ Mapa de ADO por Cidade")
-st.markdown(
-    "Passe o mouse sobre um ponto para ver os detalhes ou use o filtro na barra lateral para focar em uma cidade específica."
-)
+st.title("⭐ Mapa de ADO por Cidade (Rápido)")
+st.markdown("Selecione um estado e/ou cidade para visualizar os dados. Não há fundo de mapa, apenas o contorno do Brasil, para máxima velocidade.")
 
-# --- Legenda de Cores ---
-st.markdown(
-    """
-### Legenda das Cores
-- <span style='color:#ff6464;'>**0 a 20** → Vermelho claro</span>  
-- <span style='color:#ffa564;'>**21 a 50** → Laranja claro</span>  
-- <span style='color:#b4b4b4;'>**51 a 100** → Cinza claro</span>  
-- <span style='color:#78c878;'>**Acima de 100** → Verde claro</span>
-""",
-    unsafe_allow_html=True
-)
-
-# --- Carregamento de Dados com Google Sheets ---
 @st.cache_data(ttl=600)
 def load_data_from_private_sheet():
-    """Autentica e carrega os dados do Google Sheets. Fica em cache por 10 minutos."""
     try:
         scopes = [
             "https://www.googleapis.com/auth/spreadsheets",
@@ -48,15 +24,13 @@ def load_data_from_private_sheet():
         spreadsheet = client.open_by_key(sheet_conf["sheet_id"])
         worksheet = spreadsheet.worksheet(sheet_conf["sheet_name"])
         data = pd.DataFrame(worksheet.get_all_records())
-        # Converte colunas numéricas
         for col in ["latitude", "longitude", "ADO"]:
             data[col] = pd.to_numeric(
                 data[col].astype(str).str.replace(",", "."),
                 errors='coerce'
             )
-        # Remove linhas sem dados essenciais
         data.dropna(
-            subset=['latitude', 'longitude', 'ADO', 'min buyer_city'],
+            subset=['latitude', 'longitude', 'ADO', 'min buyer_city', 'min buyer_state'],
             inplace=True
         )
         return data
@@ -64,7 +38,6 @@ def load_data_from_private_sheet():
         st.error(f"Erro ao acessar a planilha: {e}")
         return pd.DataFrame()
 
-# --- Lógica Principal ---
 sheet_data = load_data_from_private_sheet()
 
 if sheet_data.empty:
@@ -72,50 +45,63 @@ if sheet_data.empty:
 else:
     st.success(f"{len(sheet_data)} cidades carregadas com sucesso!")
 
-    # Filtro na barra lateral
-    st.sidebar.header("Filtros do Mapa")
-    cities = sorted(sheet_data['min buyer_city'].unique())
-    cities.insert(0, "Ver todas as cidades")
-    selected_city = st.sidebar.selectbox(
-        "Selecione uma cidade:", cities
+    # Filtro por Estado
+    estados = sorted(sheet_data['min buyer_state'].unique())
+    estado_selecionado = st.sidebar.selectbox("Selecione o estado:", ["Todos"] + estados)
+
+    if estado_selecionado != "Todos":
+        df_estado = sheet_data[sheet_data['min buyer_state'] == estado_selecionado]
+    else:
+        df_estado = sheet_data
+
+    # Filtro por Cidade (opcional)
+    cidades = sorted(df_estado['min buyer_city'].unique())
+    cidade_selecionada = st.sidebar.selectbox("Selecione a cidade:", ["Todas"] + cidades)
+
+    if cidade_selecionada != "Todas":
+        df = df_estado[df_estado['min buyer_city'] == cidade_selecionada]
+    else:
+        df = df_estado
+
+    # Paleta de cor baseada no ADO
+    def get_cor(ado):
+        if ado <= 20:
+            return "red"
+        elif ado <= 50:
+            return "orange"
+        elif ado <= 100:
+            return "gray"
+        else:
+            return "green"
+
+    df["cor"] = df["ADO"].apply(get_cor)
+
+    fig = px.scatter_geo(
+        df,
+        lat="latitude",
+        lon="longitude",
+        color="cor",
+        hover_name="min buyer_city",
+        hover_data={"ADO": True, "latitude": False, "longitude": False, "cor": False},
+        scope="south america",
+        center={"lat": -14.2, "lon": -51.9},
+        fitbounds="locations",
+        size_max=10,
+    )
+    fig.update_traces(marker=dict(size=7, opacity=0.7, line=dict(width=0)))
+    fig.update_geos(
+        showcountries=True, countrycolor="White",
+        lataxis_range=[-34, 5], lonaxis_range=[-75, -34], # Recorte Brasil
+        showland=True, landcolor="#222"
+    )
+    fig.update_layout(
+        height=700,
+        margin={"r":0,"t":30,"l":0,"b":0},
+        showlegend=False,
+        geo_bgcolor="#222"
     )
 
-    # Define dados e visualização
-    if selected_city != "Ver todas as cidades":
-        df = sheet_data[sheet_data['min buyer_city'] == selected_city].copy()
-        center_lat = df.iloc[0]['latitude']
-        center_lon = df.iloc[0]['longitude']
-        zoom = 10
-    else:
-        df = sheet_data.copy()
-        center_lat, center_lon, zoom = -14.2350, -51.9253, 4
-
-    def get_color(ado):
-        if ado <= 20:
-            return 'red'
-        elif ado <= 50:
-            return 'orange'
-        elif ado <= 100:
-            return 'lightgray'
-        return 'green'
-
-    # --- Mapa base Folium + Clusters ---
-    m = folium.Map(location=[center_lat, center_lon], zoom_start=zoom, tiles="CartoDB dark_matter")
-    mc = MarkerCluster().add_to(m)
-
-    for _, row in df.iterrows():
-        folium.CircleMarker(
-            location=[row["latitude"], row["longitude"]],
-            radius=5,
-            color=get_color(row["ADO"]),
-            fill=True,
-            fill_color=get_color(row["ADO"]),
-            fill_opacity=0.8,
-            popup=f"<b>Cidade:</b> {row['min buyer_city']}<br/><b>ADO:</b> {row['ADO']}"
-        ).add_to(mc)
-
-    st_folium(m, width=1000, height=700)
+    st.plotly_chart(fig, use_container_width=True)
 
     if st.sidebar.checkbox("Mostrar tabela"):
-        st.sidebar.subheader("Dados")
-        st.sidebar.dataframe(df[['min buyer_city', 'ADO', 'latitude', 'longitude']])
+        st.sidebar.dataframe(df[['min buyer_city', 'ADO', 'min buyer_state', 'latitude', 'longitude']])
