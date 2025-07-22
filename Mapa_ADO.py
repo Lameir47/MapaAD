@@ -100,7 +100,7 @@ else:
         zoom = 6 if len(df) > 1 else 10
 
         def get_color(row):
-            if str(row['Atendimento XPT']).strip() == "Done":
+            if str(row['CEP Atendido']).strip() == "Sim":
                 return '#78c878'  # verde claro
             if row['ADO'] >= 100:
                 return 'yellow'
