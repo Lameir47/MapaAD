@@ -99,18 +99,18 @@ else:
         center_lon = df['longitude'].mean()
         zoom = 6 if len(df) > 1 else 10
 
-        def get_color(row):
-    if str(row['CEP Atendido']).strip() == "Sim":
-        return '#78c878'  # verde claro
-    if row['ADO'] >= 100:
-        return 'yellow'
-    elif row['ADO'] <= 20:
-        return 'red'
-    elif row['ADO'] <= 50:
-        return 'orange'
-    elif row['ADO'] < 100:
-        return 'lightgray'
-    return 'gray'
+         def get_color(row):
+            if str(row['CEP Atendido']).strip() == "Sim":
+                return '#78c878'  # verde claro
+            if row['ADO'] >= 100:
+                return 'yellow'
+            elif row['ADO'] <= 20:
+                return 'red'
+            elif row['ADO'] <= 50:
+                return 'orange'
+            elif row['ADO'] < 100:
+                return 'lightgray'
+            return 'gray'
 
         st.markdown(
             """
