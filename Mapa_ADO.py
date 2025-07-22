@@ -1,8 +1,8 @@
     # Filtro por Station Name (XPT)
-    xpt_options = (
-        df[df['Station Name'].str.strip().str.upper() != 'N/A']['Station Name']
-        .dropna().sort_values().unique().tolist()
-    )
+xpt_options = (
+    df[df['Station Name'].str.strip().str.upper() != 'N/A']['Station Name']
+    .dropna().sort_values().unique().tolist()
+)
     xpt_options_full = (
         sheet_data[sheet_data['Station Name'].str.strip().str.upper() != 'N/A']['Station Name']
         .dropna().sort_values().unique().tolist()
