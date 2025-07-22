@@ -12,11 +12,11 @@ st.markdown(
     <style>
     /* Fundo da página */
     .main, .stApp {
-        background-color: #ACB8C9;
+        background-color: #E9EBED;
     }
     /* Sidebar */
     section[data-testid="stSidebar"] {
-        background-color: #F27961 !important;
+        background-color: ##EE4D2D !important;
     }
     /* Texto branco na sidebar */
     section[data-testid="stSidebar"] * {
