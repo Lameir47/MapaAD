@@ -16,7 +16,7 @@ st.markdown(
     }
     /* Sidebar */
     section[data-testid="stSidebar"] {
-        background-color: ##EE4D2D !important;
+        background-color: #D3422A !important;
     }
     /* Texto branco na sidebar */
     section[data-testid="stSidebar"] * {
