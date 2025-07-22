@@ -124,7 +124,7 @@ else:
             unsafe_allow_html=True
         )
 
-        m = folium.Map(location=[center_lat, center_lon], zoom_start=zoom, tiles="CartoDB dark_matter")
+        m = folium.Map(location=[center_lat, center_lon], zoom_start=zoom, tiles="Cartodb Positron")
 
         # Adiciona todos os pontos individualmente (sem cluster)
         for _, row in df.iterrows():
