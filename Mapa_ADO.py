@@ -100,17 +100,17 @@ else:
         zoom = 6 if len(df) > 1 else 10
 
         def get_color(row):
-            if str(row['CEP Atendido']).strip() == "Sim":
-                return '#78c878'  # verde claro
-            if row['ADO'] >= 100:
-                return 'yellow'
-            elif row['ADO'] <= 20:
-                return 'red'
-            elif row['ADO'] <= 50:
-                return 'orange'
-            elif row['ADO'] < 100:
-                return 'lightgray'
-            return 'gray'
+    if str(row['CEP Atendido']).strip() == "Sim":
+        return '#78c878'  # verde claro
+    if row['ADO'] >= 100:
+        return 'yellow'
+    elif row['ADO'] <= 20:
+        return 'red'
+    elif row['ADO'] <= 50:
+        return 'orange'
+    elif row['ADO'] < 100:
+        return 'lightgray'
+    return 'gray'
 
         st.markdown(
             """
@@ -143,4 +143,4 @@ else:
 
         if st.sidebar.checkbox("Mostrar tabela"):
             st.sidebar.subheader("Dados")
-            st.sidebar.dataframe(df[['min buyer_city', 'ADO', 'min buyer_state', 'latitude', 'longitude', 'Atendimento XPT', 'Station Name']])
+            st.sidebar.dataframe(df[['min buyer_city', 'ADO', 'min buyer_state', 'latitude', 'longitude', 'Station Name']])
