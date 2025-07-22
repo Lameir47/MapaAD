@@ -5,9 +5,39 @@ from google.oauth2.service_account import Credentials
 import folium
 from streamlit_folium import st_folium
 
+# ================= Layout Customizado ==================
+# CSS para customizar a sidebar e o fundo geral
+st.markdown(
+    """
+    <style>
+    /* Fundo da página */
+    .main, .stApp {
+        background-color: #ACB8C9;
+    }
+    /* Sidebar */
+    section[data-testid="stSidebar"] {
+        background-color: #F27961 !important;
+    }
+    /* Texto branco na sidebar */
+    section[data-testid="stSidebar"] * {
+        color: #fff !important;
+    }
+    /* Botão de checkbox estilizado */
+    .st-c8, .st-c9, .stCheckbox {
+        background: transparent !important;
+    }
+    /* Dropdown/selectbox background */
+    .st-bx {
+        background: #fff !important;
+        color: #000 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+# ======================================================
+
 st.set_page_config(page_title="Mapa de ADO por Cidade", page_icon="⭐", layout="wide")
 
-st.title("⭐ Mapa de ADO por Cidade (Folium)")
+st.title("⭐ Mapa de ADO por Cidade")
 st.markdown("Selecione um estado para visualizar os dados do estado no mapa. O carregamento é mais rápido ao focar em estados específicos.")
 
 @st.cache_data(ttl=600)
@@ -63,7 +93,7 @@ else:
             if str(row['Atendimento XPT']).strip() == "Done":
                 return '#78c878'  # verde claro
             if row['ADO'] >= 100:
-                return 'dark yellow'
+                return 'yellow'
             elif row['ADO'] <= 20:
                 return 'red'
             elif row['ADO'] <= 50:
@@ -75,11 +105,11 @@ else:
         st.markdown(
             """
             ### Legenda das Cores
-            - <span style='color:#78c878;'>**Atendimento XPT = 'Done'** → Verde claro</span>  
-            - <span style='color:yellow;'>**ADO ≥ 100** → Amarelo</span>  
-            - <span style='color:#ff6464;'>**0 a 20** → Vermelho claro</span>  
-            - <span style='color:#ffa564;'>**21 a 50** → Laranja claro</span>  
-            - <span style='color:#b4b4b4;'>**51 a 99** → Cinza claro</span>
+            - <span style='color:#78c878;'><b>Cidades Atendidas</b> → Verde claro</span>  
+            - <span style='color:yellow;'><b>ADO ≥ 100</b> → Amarelo</span>  
+            - <span style='color:#ff6464;'><b>0 a 20</b> → Vermelho claro</span>  
+            - <span style='color:#ffa564;'><b>21 a 50</b> → Laranja claro</span>  
+            - <span style='color:#b4b4b4;'><b>51 a 99</b> → Cinza claro</span>
             """,
             unsafe_allow_html=True
         )
