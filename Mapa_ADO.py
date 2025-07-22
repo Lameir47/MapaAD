@@ -31,6 +31,16 @@ st.markdown(
         background: #fff !important;
         color: #000 !important;
     }
+    /* Forçar largura total do mapa folium */
+    div[data-testid="stVerticalBlock"] > div:has(.folium-map) {
+        max-width: 100vw !important;
+        width: 100vw !important;
+        margin-left: -4vw !important;
+    }
+    .folium-map, .stMarkdown, .stPlotlyChart, .stDataFrame, .element-container {
+        width: 100vw !important;
+        min-width: 100vw !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 # ======================================================
@@ -128,7 +138,8 @@ else:
                 popup=f"<b>Cidade:</b> {row['min buyer_city']}<br/><b>ADO:</b> {row['ADO']}<br/><b>Atend. XPT:</b> {row['Atendimento XPT']}"
             ).add_to(m)
 
-        st_folium(m, width=1000, height=700)
+        # O width bem alto força pegar quase toda tela, mas o CSS acima garante o 100vw
+        st_folium(m, width=1900, height=700)
 
         if st.sidebar.checkbox("Mostrar tabela"):
             st.sidebar.subheader("Dados")
