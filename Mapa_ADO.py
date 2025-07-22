@@ -122,7 +122,7 @@ else:
         <span class='cor-legenda' style='background:#ffa564;'></span><span class='label-legenda'>21 a 50</span>
         <span class='cor-legenda' style='background:#b4b4b4;'></span><span class='label-legenda'>51 a 99</span>
         </div>
-        ",
+        """,
         unsafe_allow_html=True
     )
 
