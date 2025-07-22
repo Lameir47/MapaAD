@@ -135,7 +135,7 @@ else:
                 fill=True,
                 fill_color=get_color(row),
                 fill_opacity=0.8,
-                popup=f"<b>Cidade:</b> {row['min buyer_city']}<br/><b>ADO:</b> {row['ADO']}<br/><b>Atend. XPT:</b> {row['Atendimento XPT']}"
+                popup=f"<b>Cidade:</b> {row['min buyer_city']}<br/><b>ADO:</b> {row['ADO']}<br/><b>Atend. XPT:</b> {row['Atendimento XPT']}<br/><b>XPT:</b> {row['Station Name']}"
             ).add_to(m)
 
         # O width bem alto força pegar quase toda tela, mas o CSS acima garante o 100vw
