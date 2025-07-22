@@ -63,7 +63,7 @@ else:
             if str(row['Atendimento XPT']).strip() == "Done":
                 return '#78c878'  # verde claro
             if row['ADO'] >= 100:
-                return 'yellow'
+                return 'dark yellow'
             elif row['ADO'] <= 20:
                 return 'red'
             elif row['ADO'] <= 50:
