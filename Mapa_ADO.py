@@ -6,7 +6,6 @@ import folium
 from streamlit_folium import st_folium
 
 # ================= Layout Customizado ==================
-# CSS para customizar a sidebar e o fundo geral
 st.markdown(
     """
     <style>
@@ -18,20 +17,16 @@ st.markdown(
     section[data-testid="stSidebar"] {
         background-color: #D3422A !important;
     }
-    /* Texto branco na sidebar */
     section[data-testid="stSidebar"] * {
         color: #fff !important;
     }
-    /* Botão de checkbox estilizado */
     .st-c8, .st-c9, .stCheckbox {
         background: transparent !important;
     }
-    /* Dropdown/selectbox background */
     .st-bx {
         background: #fff !important;
         color: #000 !important;
     }
-    /* Forçar largura total do mapa folium */
     div[data-testid="stVerticalBlock"] > div:has(.folium-map) {
         max-width: 100vw !important;
         width: 100vw !important;
@@ -71,7 +66,7 @@ def load_data_from_private_sheet():
                 errors='coerce'
             )
         data.dropna(
-            subset=['latitude', 'longitude', 'ADO', 'min buyer_city', 'min buyer_state', 'Atendimento XPT'],
+            subset=['latitude', 'longitude', 'ADO', 'min buyer_city', 'min buyer_state', 'Atendimento XPT', 'CEP Atendido'],
             inplace=True
         )
         return data
@@ -99,7 +94,7 @@ else:
         center_lon = df['longitude'].mean()
         zoom = 6 if len(df) > 1 else 10
 
-         def get_color(row):
+        def get_color(row):
             if str(row['CEP Atendido']).strip() == "Sim":
                 return '#78c878'  # verde claro
             if row['ADO'] >= 100:
@@ -115,7 +110,7 @@ else:
         st.markdown(
             """
             ### Legenda das Cores
-            - <span style='color:#78c878;'><b>Cidades Atendidas</b> → Verde claro</span>  
+            - <span style='color:#78c878;'><b>Cidades Atendidas (CEP Atendido = Sim)</b> → Verde claro</span>  
             - <span style='color:yellow;'><b>ADO ≥ 100</b> → Amarelo</span>  
             - <span style='color:#ff6464;'><b>0 a 20</b> → Vermelho claro</span>  
             - <span style='color:#ffa564;'><b>21 a 50</b> → Laranja claro</span>  
@@ -138,9 +133,8 @@ else:
                 popup=f"<b>Cidade:</b> {row['min buyer_city']}<br/><b>ADO:</b> {row['ADO']}<br/><b>Atend. XPT:</b> {row['Atendimento XPT']}<br/><b>XPT:</b> {row['Station Name']}"
             ).add_to(m)
 
-        # O width bem alto força pegar quase toda tela, mas o CSS acima garante o 100vw
         st_folium(m, width=1900, height=700)
 
         if st.sidebar.checkbox("Mostrar tabela"):
             st.sidebar.subheader("Dados")
-            st.sidebar.dataframe(df[['min buyer_city', 'ADO', 'min buyer_state', 'latitude', 'longitude', 'Station Name']])
+            st.sidebar.dataframe(df[['min buyer_city', 'ADO', 'min buyer_state', 'latitude', 'longitude', 'Atendimento XPT', 'CEP Atendido', 'Station Name']])
