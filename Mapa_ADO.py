@@ -16,20 +16,16 @@ st.markdown(
     section[data-testid="stSidebar"] * {
         color: #111 !important;
     }
-    /* Força campos selectbox e legendas a caberem e serem legíveis */
     .stSelectbox > div[data-baseweb="select"] {
         font-size: 15px !important;
         min-width: 0 !important;
         max-width: 95% !important;
     }
-    /* Ajusta largura para a barra lateral não "explodir" */
     .st-emotion-cache-1cypcdb {max-width: 95vw !important;}
-    /* Ajusta botões e checkboxes */
     .st-c8, .st-c9, .stCheckbox {background: transparent !important;}
     .st-bx {background: #fff !important;color: #111 !important;}
     div[data-testid="stVerticalBlock"] > div:has(.folium-map) {max-width: 100vw !important;width: 100vw !important;margin-left: -4vw !important;}
     .folium-map, .stMarkdown, .stPlotlyChart, .stDataFrame, .element-container {width: 100vw !important;min-width: 100vw !important;}
-    /* Legenda horizontal - área principal */
     .cor-legenda {display: inline-block; width: 16px; height: 16px; border-radius: 50%; margin: 0 8px 0 16px; vertical-align: middle; border:1.5px solid #888;}
     .label-legenda {margin-right: 18px; font-weight: 500; font-size: 15px; vertical-align: middle; color: #111 !important;}
     </style>
@@ -61,8 +57,9 @@ def load_data_from_private_sheet():
                 data[col].astype(str).str.replace(",", "."),
                 errors='coerce'
             )
+        # Adiciona "Hub" no dropna
         data.dropna(
-            subset=['latitude', 'longitude', 'ADO', 'min buyer_city', 'min buyer_state', 'Atendimento XPT', 'CEP Atendido', 'Station Name'],
+            subset=['latitude', 'longitude', 'ADO', 'min buyer_city', 'min buyer_state', 'Atendimento XPT', 'CEP Atendido', 'Station Name', 'Hub'],
             inplace=True
         )
         return data
@@ -123,10 +120,11 @@ else:
         if limpar:
             selected_xpt = "(Todos)"
 
-    # LEGENDA NA ÁREA PRINCIPAL COMO ERA ANTES (com círculos coloridos, horizontal)
+    # LEGENDA (adicionando HUB)
     st.markdown(
         """
         <div style='padding:7px 0 12px 0; white-space:nowrap;'>
+        <span class='cor-legenda' style='background:black;'></span><span class='label-legenda'>Hub</span>
         <span class='cor-legenda' style='background:#AD63D4;'></span><span class='label-legenda'>XPT Selecionado</span>
         <span class='cor-legenda' style='background:#78c878;'></span><span class='label-legenda'>Cidades Atendidas</span>
         <span class='cor-legenda' style='background:yellow;'></span><span class='label-legenda'>ADO ≥ 100</span>
@@ -146,6 +144,9 @@ else:
         zoom = 6 if len(df) > 1 else 10
 
         def get_color(row):
+            # Novo: Hub tem prioridade máxima e sempre será preto
+            if 'Hub' in row and str(row['Hub']).strip().lower() == "sim":
+                return 'black'  # preto para Hubs
             if row['destaque_xpt']:
                 return '#AD63D4'  # lilás destaque
             if str(row['CEP Atendido']).strip() == "Sim":
@@ -170,10 +171,10 @@ else:
                 fill=True,
                 fill_color=get_color(row),
                 fill_opacity=0.8,
-                popup=f"<b>Cidade:</b> {row['min buyer_city']}<br/><b>ADO:</b> {row['ADO']}<br/><b>Atend. XPT:</b> {row['Atendimento XPT']}<br/><b>XPT:</b> {row['Station Name']}"
+                popup=f"<b>Cidade:</b> {row['min buyer_city']}<br/><b>ADO:</b> {row['ADO']}<br/><b>Atend. XPT:</b> {row['Atendimento XPT']}<br/><b>XPT:</b> {row['Station Name']}<br/><b>Hub:</b> {row['Hub']}"
             ).add_to(m)
         st_folium(m, width=1900, height=700)
 
         if st.sidebar.checkbox("Mostrar tabela"):
             st.sidebar.subheader("Dados")
-            st.sidebar.dataframe(df[['min buyer_city', 'ADO', 'min buyer_state', 'latitude', 'longitude', 'Atendimento XPT', 'CEP Atendido', 'Station Name', 'destaque_xpt']])
+            st.sidebar.dataframe(df[['min buyer_city', 'ADO', 'min buyer_state', 'latitude', 'longitude', 'Atendimento XPT', 'CEP Atendido', 'Station Name', 'destaque_xpt', 'Hub']])
