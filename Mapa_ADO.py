@@ -7,7 +7,7 @@ from streamlit_folium import st_folium
 
 st.set_page_config(page_title="Mapa de ADO por Cidade", page_icon="⭐", layout="wide")
 
-st.title("⭐ Mapa de ADO por Cidade")
+st.title("⭐ Mapa de ADO por Cidade (Folium)")
 st.markdown("Selecione um estado para visualizar os dados do estado no mapa. O carregamento é mais rápido ao focar em estados específicos.")
 
 @st.cache_data(ttl=600)
@@ -31,7 +31,7 @@ def load_data_from_private_sheet():
                 errors='coerce'
             )
         data.dropna(
-            subset=['latitude', 'longitude', 'ADO', 'min buyer_city', 'min buyer_state'],
+            subset=['latitude', 'longitude', 'ADO', 'min buyer_city', 'min buyer_state', 'Atendimento XPT'],
             inplace=True
         )
         return data
@@ -59,18 +59,21 @@ else:
         center_lon = df['longitude'].mean()
         zoom = 6 if len(df) > 1 else 10
 
-        def get_color(ado):
-            if ado <= 20:
+        def get_color(row):
+            if str(row['Atendimento XPT']).strip() != "Out of plan":
+                return '#EE4D2D'  # cor laranja especial Shopee
+            if row['ADO'] <= 20:
                 return 'red'
-            elif ado <= 50:
+            elif row['ADO'] <= 50:
                 return 'orange'
-            elif ado <= 100:
+            elif row['ADO'] <= 100:
                 return 'lightgray'
             return 'green'
 
         st.markdown(
             """
             ### Legenda das Cores
+            - <span style='color:#EE4D2D;'>**Atendimento XPT ≠ 'Out of plan'** → Laranja Shopee</span>  
             - <span style='color:#ff6464;'>**0 a 20** → Vermelho claro</span>  
             - <span style='color:#ffa564;'>**21 a 50** → Laranja claro</span>  
             - <span style='color:#b4b4b4;'>**51 a 100** → Cinza claro</span>  
@@ -86,15 +89,15 @@ else:
             folium.CircleMarker(
                 location=[row["latitude"], row["longitude"]],
                 radius=5,
-                color=get_color(row["ADO"]),
+                color=get_color(row),
                 fill=True,
-                fill_color=get_color(row["ADO"]),
+                fill_color=get_color(row),
                 fill_opacity=0.8,
-                popup=f"<b>Cidade:</b> {row['min buyer_city']}<br/><b>ADO:</b> {row['ADO']}"
+                popup=f"<b>Cidade:</b> {row['min buyer_city']}<br/><b>ADO:</b> {row['ADO']}<br/><b>Atend. XPT:</b> {row['Atendimento XPT']}"
             ).add_to(m)
 
         st_folium(m, width=1000, height=700)
 
         if st.sidebar.checkbox("Mostrar tabela"):
             st.sidebar.subheader("Dados")
-            st.sidebar.dataframe(df[['min buyer_city', 'ADO', 'min buyer_state', 'latitude', 'longitude']])
+            st.sidebar.dataframe(df[['min buyer_city', 'ADO', 'min buyer_state', 'latitude', 'longitude', 'Atendimento XPT']])
