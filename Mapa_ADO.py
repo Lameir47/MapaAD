@@ -60,24 +60,26 @@ else:
         zoom = 6 if len(df) > 1 else 10
 
         def get_color(row):
-            if str(row['Atendimento XPT']).strip() != "Out of plan":
-                return '#EE4D2D'  # cor laranja especial Shopee
-            if row['ADO'] <= 20:
+            if str(row['Atendimento XPT']).strip() == "Done":
+                return '#78c878'  # verde claro
+            if row['ADO'] >= 100:
+                return 'yellow'
+            elif row['ADO'] <= 20:
                 return 'red'
             elif row['ADO'] <= 50:
                 return 'orange'
-            elif row['ADO'] <= 100:
+            elif row['ADO'] < 100:
                 return 'lightgray'
-            return 'green'
+            return 'gray'
 
         st.markdown(
             """
             ### Legenda das Cores
-            - <span style='color:#EE4D2D;'>**Atendimento XPT ≠ 'Out of plan'** → Laranja Shopee</span>  
+            - <span style='color:#78c878;'>**Atendimento XPT = 'Done'** → Verde claro</span>  
+            - <span style='color:yellow;'>**ADO ≥ 100** → Amarelo</span>  
             - <span style='color:#ff6464;'>**0 a 20** → Vermelho claro</span>  
             - <span style='color:#ffa564;'>**21 a 50** → Laranja claro</span>  
-            - <span style='color:#b4b4b4;'>**51 a 100** → Cinza claro</span>  
-            - <span style='color:#78c878;'>**Acima de 100** → Verde claro</span>
+            - <span style='color:#b4b4b4;'>**51 a 99** → Cinza claro</span>
             """,
             unsafe_allow_html=True
         )
