@@ -10,15 +10,20 @@ st.markdown(
     """
     <style>
     .main, .stApp {background-color: #E9EBED;}
-    section[data-testid="stSidebar"] {background-color: #D3422A !important;}
-    section[data-testid="stSidebar"] * {color: #fff !important;}
+    section[data-testid="stSidebar"] {
+        background-color: #D3422A !important;
+    }
+    section[data-testid="stSidebar"] * {
+        color: #fff !important;
+    }
     .st-c8, .st-c9, .stCheckbox {background: transparent !important;}
     .st-bx {background: #fff !important;color: #000 !important;}
     div[data-testid="stVerticalBlock"] > div:has(.folium-map) {max-width: 100vw !important;width: 100vw !important;margin-left: -4vw !important;}
     .folium-map, .stMarkdown, .stPlotlyChart, .stDataFrame, .element-container {width: 100vw !important;min-width: 100vw !important;}
-    /* Legenda horizontal */
-    .cor-legenda {display: inline-block; width: 16px; height: 16px; border-radius: 50%; margin: 0 8px 0 16px; vertical-align: middle; border:1.5px solid #888;}
-    .label-legenda {margin-right: 18px; font-weight: 500; font-size: 15px; vertical-align: middle;}
+    /* Legenda na sidebar - ocupa toda a largura e letras pretas */
+    .sidebar-legenda {margin: 18px 0 0 0; text-align: left; width: 100%;}
+    .sidebar-cor-legenda {display: inline-block; width: 15px; height: 15px; border-radius: 50%; margin: 0 6px 0 0; vertical-align: middle; border:1.5px solid #888;}
+    .sidebar-label-legenda {margin-right: 11px; font-weight: 500; font-size: 14px; vertical-align: middle; color: #111 !important;}
     </style>
     """, unsafe_allow_html=True)
 # ======================================================
@@ -73,6 +78,21 @@ else:
     else:
         df = sheet_data.copy()
 
+    # Legenda na sidebar (horizontal, fonte preta)
+    st.sidebar.markdown(
+        """
+        <div class='sidebar-legenda'>
+            <span class='sidebar-cor-legenda' style='background:#AD63D4;'></span><span class='sidebar-label-legenda'>XPT Selecionado</span>
+            <span class='sidebar-cor-legenda' style='background:#78c878;'></span><span class='sidebar-label-legenda'>Cidades Atendidas</span>
+            <span class='sidebar-cor-legenda' style='background:yellow;'></span><span class='sidebar-label-legenda'>ADO ≥ 100</span>
+            <span class='sidebar-cor-legenda' style='background:#ff6464;'></span><span class='sidebar-label-legenda'>0 a 20</span>
+            <span class='sidebar-cor-legenda' style='background:#ffa564;'></span><span class='sidebar-label-legenda'>21 a 50</span>
+            <span class='sidebar-cor-legenda' style='background:#b4b4b4;'></span><span class='sidebar-label-legenda'>51 a 99</span>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
     # Filtro por Station Name (XPT)
     xpt_options = (
         df[df['Station Name'].str.strip().str.upper() != 'N/A']['Station Name']
@@ -119,21 +139,6 @@ else:
             elif row['ADO'] < 100:
                 return 'lightgray'
             return 'gray'
-
-        # LEGENDA HORIZONTAL COM CÍRCULOS COLORIDOS
-        st.markdown(
-            """
-            <div style='padding:7px 0 12px 0; white-space:nowrap;'>
-            <span class='cor-legenda' style='background:#AD63D4;'></span><span class='label-legenda'>XPT Selecionado</span>
-            <span class='cor-legenda' style='background:#78c878;'></span><span class='label-legenda'>Cidades Atendidas</span>
-            <span class='cor-legenda' style='background:yellow;'></span><span class='label-legenda'>ADO ≥ 100</span>
-            <span class='cor-legenda' style='background:#ff6464;'></span><span class='label-legenda'>0 a 20</span>
-            <span class='cor-legenda' style='background:#ffa564;'></span><span class='label-legenda'>21 a 50</span>
-            <span class='cor-legenda' style='background:#b4b4b4;'></span><span class='label-legenda'>51 a 99</span>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
 
         m = folium.Map(location=[center_lat, center_lon], zoom_start=zoom, tiles="Cartodb Positron")
         for _, row in df.iterrows():
