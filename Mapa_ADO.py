@@ -43,7 +43,7 @@ st.markdown(
 st.set_page_config(page_title="Mapa de ADO por Cidade", page_icon="⭐", layout="wide")
 
 st.title("⭐ Mapa de ADO por Cidade")
-st.markdown("Selecione um estado para visualizar os dados do estado no mapa. O carregamento é mais rápido ao focar em estados específicos.")
+st.markdown("Selecione um estado e/ou XPT para visualizar os dados do estado no mapa. O carregamento é mais rápido ao focar em estados ou XPT específicos.")
 
 @st.cache_data(ttl=600)
 def load_data_from_private_sheet():
@@ -66,7 +66,7 @@ def load_data_from_private_sheet():
                 errors='coerce'
             )
         data.dropna(
-            subset=['latitude', 'longitude', 'ADO', 'min buyer_city', 'min buyer_state', 'Atendimento XPT', 'CEP Atendido'],
+            subset=['latitude', 'longitude', 'ADO', 'min buyer_city', 'min buyer_state', 'Atendimento XPT', 'CEP Atendido', 'Station Name'],
             inplace=True
         )
         return data
@@ -83,18 +83,50 @@ else:
 
     # Filtro por Estado
     estados = sorted(sheet_data['min buyer_state'].unique())
-    estado_selecionado = st.sidebar.selectbox("Selecione o estado:", estados)
+    estado_selecionado = st.sidebar.selectbox("Selecione o estado:", ["Todos"] + estados)
+    if estado_selecionado != "Todos":
+        df = sheet_data[sheet_data['min buyer_state'] == estado_selecionado].copy()
+    else:
+        df = sheet_data.copy()
 
-    df = sheet_data[sheet_data['min buyer_state'] == estado_selecionado].copy()
+    # Filtro por Station Name (XPT)
+    xpt_options = (
+        df[df['Station Name'].str.strip().str.upper() != 'N/A']['Station Name']
+        .dropna().sort_values().unique().tolist()
+    )
+    xpt_options_full = (
+        sheet_data[sheet_data['Station Name'].str.strip().str.upper() != 'N/A']['Station Name']
+        .dropna().sort_values().unique().tolist()
+    )
+    
+    if estado_selecionado == "Todos":
+        xpt_select_list = xpt_options_full
+    else:
+        xpt_select_list = xpt_options
+
+    # Adiciona opção em branco para limpar
+    xpt_select_list = ["(Todos)"] + xpt_select_list
+    selected_xpt = st.sidebar.selectbox("Selecione o XPT", xpt_select_list)
+    limpar = st.sidebar.button("Limpar")
+
+    # Lógica do filtro de XPT
+    if selected_xpt != "(Todos)" and not limpar:
+        df['destaque_xpt'] = df['Station Name'] == selected_xpt
+    else:
+        df['destaque_xpt'] = False
+        if limpar:
+            selected_xpt = "(Todos)"
 
     if df.empty:
-        st.warning("Nenhuma cidade encontrada para esse estado.")
+        st.warning("Nenhuma cidade encontrada para esse estado/XPT.")
     else:
         center_lat = df['latitude'].mean()
         center_lon = df['longitude'].mean()
         zoom = 6 if len(df) > 1 else 10
 
         def get_color(row):
+            if row['destaque_xpt']:
+                return '#AD63D4'  # lilás destaque
             if str(row['CEP Atendido']).strip() == "Sim":
                 return '#78c878'  # verde claro
             if row['ADO'] >= 100:
@@ -110,6 +142,7 @@ else:
         st.markdown(
             """
             ### Legenda das Cores
+            - <span style='color:#AD63D4;'><b>XPT Selecionado</b> → Lilás</span>  
             - <span style='color:#78c878;'><b>Cidades Atendidas (CEP Atendido = Sim)</b> → Verde claro</span>  
             - <span style='color:yellow;'><b>ADO ≥ 100</b> → Amarelo</span>  
             - <span style='color:#ff6464;'><b>0 a 20</b> → Vermelho claro</span>  
@@ -121,11 +154,12 @@ else:
 
         m = folium.Map(location=[center_lat, center_lon], zoom_start=zoom, tiles="Cartodb Positron")
 
-        # Adiciona todos os pontos individualmente (sem cluster)
+        # Adiciona pontos, destaca os do XPT selecionado
         for _, row in df.iterrows():
+            tamanho = 6.5 if row['destaque_xpt'] else 5
             folium.CircleMarker(
                 location=[row["latitude"], row["longitude"]],
-                radius=5,
+                radius=tamanho,
                 color=get_color(row),
                 fill=True,
                 fill_color=get_color(row),
@@ -137,4 +171,4 @@ else:
 
         if st.sidebar.checkbox("Mostrar tabela"):
             st.sidebar.subheader("Dados")
-            st.sidebar.dataframe(df[['min buyer_city', 'ADO', 'min buyer_state', 'latitude', 'longitude', 'Atendimento XPT', 'CEP Atendido', 'Station Name']])
+            st.sidebar.dataframe(df[['min buyer_city', 'ADO', 'min buyer_state', 'latitude', 'longitude', 'Atendimento XPT', 'CEP Atendido', 'Station Name', 'destaque_xpt']])
