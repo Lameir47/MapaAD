@@ -9,33 +9,16 @@ from streamlit_folium import st_folium
 st.markdown(
     """
     <style>
-    /* Fundo da página */
-    .main, .stApp {
-        background-color: #E9EBED;
-    }
-    /* Sidebar */
-    section[data-testid="stSidebar"] {
-        background-color: #D3422A !important;
-    }
-    section[data-testid="stSidebar"] * {
-        color: #fff !important;
-    }
-    .st-c8, .st-c9, .stCheckbox {
-        background: transparent !important;
-    }
-    .st-bx {
-        background: #fff !important;
-        color: #000 !important;
-    }
-    div[data-testid="stVerticalBlock"] > div:has(.folium-map) {
-        max-width: 100vw !important;
-        width: 100vw !important;
-        margin-left: -4vw !important;
-    }
-    .folium-map, .stMarkdown, .stPlotlyChart, .stDataFrame, .element-container {
-        width: 100vw !important;
-        min-width: 100vw !important;
-    }
+    .main, .stApp {background-color: #E9EBED;}
+    section[data-testid="stSidebar"] {background-color: #D3422A !important;}
+    section[data-testid="stSidebar"] * {color: #fff !important;}
+    .st-c8, .st-c9, .stCheckbox {background: transparent !important;}
+    .st-bx {background: #fff !important;color: #000 !important;}
+    div[data-testid="stVerticalBlock"] > div:has(.folium-map) {max-width: 100vw !important;width: 100vw !important;margin-left: -4vw !important;}
+    .folium-map, .stMarkdown, .stPlotlyChart, .stDataFrame, .element-container {width: 100vw !important;min-width: 100vw !important;}
+    /* Legenda horizontal */
+    .cor-legenda {display: inline-block; width: 16px; height: 16px; border-radius: 50%; margin: 0 8px 0 16px; vertical-align: middle; border:1.5px solid #888;}
+    .label-legenda {margin-right: 18px; font-weight: 500; font-size: 15px; vertical-align: middle;}
     </style>
     """, unsafe_allow_html=True)
 # ======================================================
@@ -81,9 +64,10 @@ if sheet_data.empty:
 else:
     st.success(f"{len(sheet_data)} cidades carregadas com sucesso!")
 
-    # Filtro por Estado
+    # Filtro por Estado (pré-selecionado em São Paulo, se existir)
     estados = sorted(sheet_data['min buyer_state'].unique())
-    estado_selecionado = st.sidebar.selectbox("Selecione o estado:", ["Todos"] + estados)
+    default_estado = "São Paulo" if "São Paulo" in estados else estados[0]
+    estado_selecionado = st.sidebar.selectbox("Selecione o estado:", ["Todos"] + estados, index=(estados.index(default_estado)+1) if default_estado in estados else 0)
     if estado_selecionado != "Todos":
         df = sheet_data[sheet_data['min buyer_state'] == estado_selecionado].copy()
     else:
@@ -98,13 +82,10 @@ else:
         sheet_data[sheet_data['Station Name'].str.strip().str.upper() != 'N/A']['Station Name']
         .dropna().sort_values().unique().tolist()
     )
-    
     if estado_selecionado == "Todos":
         xpt_select_list = xpt_options_full
     else:
         xpt_select_list = xpt_options
-
-    # Adiciona opção em branco para limpar
     xpt_select_list = ["(Todos)"] + xpt_select_list
     selected_xpt = st.sidebar.selectbox("Selecione o XPT", xpt_select_list)
     limpar = st.sidebar.button("Limpar")
@@ -139,22 +120,22 @@ else:
                 return 'lightgray'
             return 'gray'
 
+        # LEGENDA HORIZONTAL COM CÍRCULOS COLORIDOS
         st.markdown(
             """
-            ### Legenda das Cores
-            - <span style='color:#AD63D4;'><b>XPT Selecionado</b> → Lilás</span>  
-            - <span style='color:#78c878;'><b>Cidades Atendidas (CEP Atendido = Sim)</b> → Verde claro</span>  
-            - <span style='color:yellow;'><b>ADO ≥ 100</b> → Amarelo</span>  
-            - <span style='color:#ff6464;'><b>0 a 20</b> → Vermelho claro</span>  
-            - <span style='color:#ffa564;'><b>21 a 50</b> → Laranja claro</span>  
-            - <span style='color:#b4b4b4;'><b>51 a 99</b> → Cinza claro</span>
+            <div style='padding:7px 0 12px 0; white-space:nowrap;'>
+            <span class='cor-legenda' style='background:#AD63D4;'></span><span class='label-legenda'>XPT Selecionado</span>
+            <span class='cor-legenda' style='background:#78c878;'></span><span class='label-legenda'>Cidades Atendidas</span>
+            <span class='cor-legenda' style='background:yellow;'></span><span class='label-legenda'>ADO ≥ 100</span>
+            <span class='cor-legenda' style='background:#ff6464;'></span><span class='label-legenda'>0 a 20</span>
+            <span class='cor-legenda' style='background:#ffa564;'></span><span class='label-legenda'>21 a 50</span>
+            <span class='cor-legenda' style='background:#b4b4b4;'></span><span class='label-legenda'>51 a 99</span>
+            </div>
             """,
             unsafe_allow_html=True
         )
 
         m = folium.Map(location=[center_lat, center_lon], zoom_start=zoom, tiles="Cartodb Positron")
-
-        # Adiciona pontos, destaca os do XPT selecionado
         for _, row in df.iterrows():
             tamanho = 6.5 if row['destaque_xpt'] else 5
             folium.CircleMarker(
@@ -166,7 +147,6 @@ else:
                 fill_opacity=0.8,
                 popup=f"<b>Cidade:</b> {row['min buyer_city']}<br/><b>ADO:</b> {row['ADO']}<br/><b>Atend. XPT:</b> {row['Atendimento XPT']}<br/><b>XPT:</b> {row['Station Name']}"
             ).add_to(m)
-
         st_folium(m, width=1900, height=700)
 
         if st.sidebar.checkbox("Mostrar tabela"):
