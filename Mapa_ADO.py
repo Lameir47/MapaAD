@@ -143,4 +143,4 @@ else:
 
         if st.sidebar.checkbox("Mostrar tabela"):
             st.sidebar.subheader("Dados")
-            st.sidebar.dataframe(df[['min buyer_city', 'ADO', 'min buyer_state', 'latitude', 'longitude', 'Atendimento XPT']])
+            st.sidebar.dataframe(df[['min buyer_city', 'ADO', 'min buyer_state', 'latitude', 'longitude', 'Atendimento XPT', 'Station Name']])
