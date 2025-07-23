@@ -57,7 +57,6 @@ def load_data_from_private_sheet():
                 data[col].astype(str).str.replace(",", "."),
                 errors='coerce'
             )
-        # Adiciona "Hub" no dropna
         data.dropna(
             subset=['latitude', 'longitude', 'ADO', 'min buyer_city', 'min buyer_state', 'Atendimento XPT', 'CEP Atendido', 'Station Name', 'Hub'],
             inplace=True
@@ -99,6 +98,9 @@ else:
     xpt_select_list = ["(Todos)"] + xpt_select_list
     selected_xpt = st.sidebar.selectbox("Selecione o XPT", xpt_select_list)
     limpar = st.sidebar.button("Limpar")
+
+    # TOGGLE PARA FIXAR LEGENDA
+    fixar_legenda = st.sidebar.toggle("Fixar Legendas")
 
     # NOVA LÓGICA DO FILTRO DE XPT
     if selected_xpt != "(Todos)" and not limpar:
@@ -162,17 +164,33 @@ else:
             return 'gray'
 
         m = folium.Map(location=[center_lat, center_lon], zoom_start=zoom, tiles="Cartodb Positron")
+
+        # Armazena popups caso fixar_legenda esteja ativo
+        popups = []
         for _, row in df.iterrows():
             tamanho = 6.5 if row['destaque_xpt'] else 5
-            folium.CircleMarker(
-                location=[row["latitude"], row["longitude"]],
-                radius=tamanho,
-                color=get_color(row),
-                fill=True,
-                fill_color=get_color(row),
-                fill_opacity=0.8,
-                popup=f"<b>Cidade:</b> {row['min buyer_city']}<br/><b>ADO:</b> {row['ADO']}<br/><b>Atend. XPT:</b> {row['Atendimento XPT']}<br/><b>XPT:</b> {row['Station Name']}<br/><b>Hub:</b> {row['Hub']}"
-            ).add_to(m)
+            popup_html = f"<b>Cidade:</b> {row['min buyer_city']}<br/><b>ADO:</b> {row['ADO']}<br/><b>Atend. XPT:</b> {row['Atendimento XPT']}<br/><b>XPT:</b> {row['Station Name']}<br/><b>Hub:</b> {row['Hub']}"
+            if fixar_legenda:
+                popups.append(folium.Popup(popup_html, max_width=300, show=True))
+                folium.CircleMarker(
+                    location=[row["latitude"], row["longitude"]],
+                    radius=tamanho,
+                    color=get_color(row),
+                    fill=True,
+                    fill_color=get_color(row),
+                    fill_opacity=0.8,
+                    popup=popups[-1]
+                ).add_to(m)
+            else:
+                folium.CircleMarker(
+                    location=[row["latitude"], row["longitude"]],
+                    radius=tamanho,
+                    color=get_color(row),
+                    fill=True,
+                    fill_color=get_color(row),
+                    fill_opacity=0.8,
+                    popup=popup_html
+                ).add_to(m)
         st_folium(m, width=1900, height=700)
 
         if st.sidebar.checkbox("Mostrar tabela"):
